@@ -1,0 +1,122 @@
+"use client";
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useCart } from '../../CartContext';
+import { useCustomer } from '../../CustomerContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
+import { Ruler, ShoppingBag, ArrowLeft, Star, Heart, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const isVideo = (url) => url && (url.toLowerCase().includes('.mp4') || url.toLowerCase().includes('.webm') || url.toLowerCase().includes('.mov') || url.toLowerCase().includes('.avi') || url.toLowerCase().includes('.mkv'));
+
+export default function ProductPage({ params }) {
+  const [product, setProduct] = useState(null);
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [selectedSize, setSelectedSize] = useState('');
+  const [measurements, setMeasurements] = useState({ chest: '', waist: '', length: '' });
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+
+  const { addToCart, setIsCartOpen, cart } = useCart();
+  const { customer, loginCustomer } = useCustomer();
+  const isWishlisted = customer?.wishlist?.includes(params.id);
+
+  useEffect(() => {
+    fetch(`http://localhost:8080/api/storefront/products/${params.id}`).then(res => res.json()).then(data => { setProduct(data); return data.category; }).catch(console.error);
+    fetch(`http://localhost:8080/api/storefront/products/${params.id}/related`).then(res => res.json()).then(data => setRelatedProducts(data)).catch(console.error);
+  }, [params.id]);
+
+  if (!product) return ( <div className="min-h-screen bg-stone-50 flex items-center justify-center"><motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="w-12 h-12 border-4 border-stone-200 border-t-amber-700 rounded-full" /></div> );
+
+  const gallery = product.mediaGallery && product.mediaGallery.length > 0 ? product.mediaGallery : [product.imageUrl];
+
+  const handleAddToCart = () => {
+    if (!product.requiresTailoring && !selectedSize) return toast.error('Please select a size.');
+    addToCart({ productId: product._id, name: product.name, price: product.price, compareAtPrice: product.compareAtPrice, requiresTailoring: product.requiresTailoring, size: selectedSize, measurements: product.requiresTailoring ? measurements : null, imageUrl: gallery[0] });
+    toast.success(`${product.name} added to collection`);
+  };
+
+  const handleWishlist = async () => {
+    if (!customer) return toast.error('Please log in to save to wishlist.');
+    try { const res = await fetch(`http://localhost:8080/api/storefront/customers/${customer._id}/wishlist`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId: product._id }) }); const data = await res.json(); if (data.success) { loginCustomer(data.customer); toast.success(isWishlisted ? 'Removed from Wishlist' : 'Added to Wishlist'); } } catch(err) { toast.error('Failed to update wishlist'); }
+  };
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault(); if (!customer) return toast.error('Please log in to leave a review.'); const loadingId = toast.loading('Publishing review...');
+    try { const res = await fetch(`http://localhost:8080/api/storefront/products/${product._id}/reviews`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerName: customer.name, rating: reviewForm.rating, comment: reviewForm.comment }) }); const data = await res.json(); if (data.success) { setProduct(data.product); setReviewForm({ rating: 5, comment: '' }); toast.success('Review published!', { id: loadingId }); } else { throw new Error(data.error || 'Server rejected review'); } } catch(err) { toast.error(err.message || 'Failed to publish', { id: loadingId }); }
+  };
+
+  const renderStars = (rating) => [...Array(5)].map((_, i) => <Star key={i} size={14} className={i < rating ? "fill-amber-500 text-amber-500" : "text-stone-300"} />);
+
+  return (
+    <main className="min-h-screen bg-stone-50 font-sans text-stone-900 overflow-x-hidden">
+      <nav className="w-full px-8 py-6 flex justify-between items-center absolute top-0 z-40"><Link href="/" className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-stone-500 hover:text-stone-900 transition"><ArrowLeft size={16} /> Archives</Link><button onClick={() => setIsCartOpen(true)} className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest hover:text-amber-700 transition"><ShoppingBag size={16} /> Cart ({cart.length})</button></nav>
+
+      <div className="max-w-7xl mx-auto px-8 pt-24 pb-20 grid grid-cols-1 lg:grid-cols-2 gap-16 items-start border-b border-stone-200">
+        
+        <div className="space-y-4 sticky top-24">
+          <div className="relative h-[65vh] lg:h-[75vh] w-full bg-stone-200 shadow-xl rounded-2xl overflow-hidden group">
+            <AnimatePresence mode="wait">
+              <motion.div key={activeMediaIndex} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }} className="w-full h-full">
+                {isVideo(gallery[activeMediaIndex]) ? ( <video src={gallery[activeMediaIndex]} className="w-full h-full object-cover" autoPlay loop muted playsInline /> ) : ( <img src={gallery[activeMediaIndex]} className="w-full h-full object-cover" /> )}
+              </motion.div>
+            </AnimatePresence>
+            {gallery.length > 1 && ( <>
+              <button onClick={() => setActiveMediaIndex(prev => (prev - 1 + gallery.length) % gallery.length)} className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 p-2 rounded-full opacity-0 group-hover:opacity-100 transition shadow"><ChevronLeft size={20}/></button>
+              <button onClick={() => setActiveMediaIndex(prev => (prev + 1) % gallery.length)} className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 p-2 rounded-full opacity-0 group-hover:opacity-100 transition shadow"><ChevronRight size={20}/></button>
+            </> )}
+          </div>
+          {gallery.length > 1 && ( <div className="flex gap-3 overflow-x-auto py-2">{gallery.map((url, idx) => ( <button key={idx} onClick={() => setActiveMediaIndex(idx)} className={`w-20 h-24 rounded-xl overflow-hidden flex-shrink-0 border-2 transition ${activeMediaIndex === idx ? 'border-amber-700 ring-2 ring-amber-700/20 shadow-md' : 'border-transparent opacity-70'}`}>{isVideo(url) ? <video src={url} className="w-full h-full object-cover" muted /> : <img src={url} className="w-full h-full object-cover" />}</button> ))}</div> )}
+        </div>
+
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col max-w-md pt-10">
+          <p className="text-[10px] text-amber-700 font-bold uppercase tracking-[0.2em] mb-4">{product.category}</p>
+          <h1 className="text-4xl lg:text-5xl font-serif text-stone-900 mb-4 leading-tight">{product.name}</h1>
+          <div className="flex items-center gap-3 mb-6"><div className="flex">{renderStars(Math.round(product.averageRating))}</div><span className="text-xs text-stone-500 font-bold tracking-widest">{product.averageRating} ({product.reviews?.length || 0} Reviews)</span></div>
+          <div className="flex items-end gap-4 mb-8"><p className="text-3xl font-light text-stone-900">₹{(product.price || 0).toLocaleString('en-IN')}</p>{product.compareAtPrice && <p className="text-xl font-light text-stone-400 line-through mb-0.5">₹{product.compareAtPrice.toLocaleString('en-IN')}</p>}</div>
+          {(product.tags || []).length > 0 && (<div className="flex flex-wrap gap-2 mb-8">{product.tags.map(t => <span key={t} className="bg-stone-100 border border-stone-200 text-stone-600 text-[9px] uppercase tracking-widest font-bold px-2 py-1 rounded">{t}</span>)}</div>)}
+
+          <div className="border-t border-stone-200 pt-8 mb-10">
+            {product.requiresTailoring ? ( <div className="space-y-6"><p className="text-[11px] font-bold text-stone-800 uppercase tracking-widest flex items-center gap-2"><Ruler size={14} /> Atelier Measurements</p><div className="grid grid-cols-3 gap-6">{['chest', 'waist', 'length'].map(m => (<div key={m} className="relative group"><input type="number" value={measurements[m]} onChange={(e) => setMeasurements({...measurements, [m]: e.target.value})} className="w-full pb-2 border-b-2 border-stone-300 bg-transparent outline-none focus:border-stone-900 transition text-lg" placeholder=" " /><label className="absolute left-0 top-0 text-stone-400 text-xs uppercase tracking-widest transition-all group-focus-within:-top-5 group-focus-within:text-[9px] group-focus-within:text-stone-900">{m}</label></div>))}</div></div> ) : ( <div className="space-y-6"><p className="text-[11px] font-bold text-stone-800 uppercase tracking-widest">Select Fit</p><div className="flex gap-4">{['S', 'M', 'L', 'XL'].map(size => (<button key={size} onClick={() => setSelectedSize(size)} className={`w-14 h-14 flex items-center justify-center border rounded-xl transition-all duration-300 ${selectedSize === size ? 'border-stone-900 bg-stone-900 text-white shadow-lg' : 'border-stone-300 text-stone-600 hover:border-stone-500'}`}>{size}</button>))}</div></div> )}
+          </div>
+          <button onClick={handleAddToCart} className="w-full bg-stone-900 text-white py-5 text-sm uppercase tracking-[0.2em] font-bold hover:bg-stone-800 transition duration-300 shadow-xl shadow-stone-900/20 mb-12 rounded-xl">Add to Collection</button>
+          
+          {(product.attributes || []).length > 0 && (<div className="bg-stone-50 border border-stone-100 rounded-2xl p-6 mb-12"><h3 className="text-[10px] font-bold uppercase tracking-widest text-stone-500 border-b border-stone-200 pb-3 mb-4">Design Attributes</h3><div className="space-y-3">{product.attributes.map((attr, i) => (<div key={i} className="flex gap-4 text-sm items-center"><span className="flex items-center gap-2 text-stone-500 font-bold w-1/3"><CheckCircle2 size={14} className="text-amber-700"/> {attr.key}</span>{attr.value && <span className="font-medium text-stone-900">{attr.value}</span>}</div>))}</div></div>)}
+        </motion.div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-8 py-20">
+        <div className="flex justify-between items-end mb-12 border-b border-stone-200 pb-6"><h3 className="text-3xl font-serif text-stone-900">Client Testimonials</h3></div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
+          <div className="lg:col-span-1 lg:sticky lg:top-24"><form onSubmit={handleReviewSubmit} className="bg-white p-8 rounded-2xl shadow-sm border border-stone-100"><p className="text-xs font-bold uppercase tracking-widest text-stone-800 mb-6">Leave your thoughts</p><div className="flex gap-2 mb-6">{[1, 2, 3, 4, 5].map(num => (<button type="button" key={num} onClick={() => setReviewForm({...reviewForm, rating: num})}><Star size={24} className={num <= reviewForm.rating ? "fill-amber-500 text-amber-500" : "text-stone-200 hover:text-amber-200 transition"} /></button>))}</div><textarea required value={reviewForm.comment} onChange={(e) => setReviewForm({...reviewForm, comment: e.target.value})} placeholder="How was the craftsmanship?" className="w-full p-4 border border-stone-200 rounded-xl outline-none focus:border-amber-700 bg-stone-50/50 mb-6 text-sm resize-none h-32" /><button type="submit" className="w-full bg-stone-900 text-white px-6 py-4 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-stone-800 transition shadow-lg shadow-stone-900/20">Publish Review</button></form></div>
+          <div className="lg:col-span-2"><div className="grid grid-cols-1 md:grid-cols-2 gap-6">{(!product.reviews || product.reviews.length === 0) ? (<div className="md:col-span-2 py-12 text-center border-2 border-dashed border-stone-200 rounded-2xl"><p className="text-stone-400 text-sm font-serif">Be the first to review this design.</p></div>) : (product.reviews.map((rev, idx) => (<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }} key={idx} className="bg-white p-6 rounded-2xl border border-stone-100 shadow-sm flex flex-col justify-between"><div><div className="flex justify-between items-start mb-4"><div className="flex gap-3 items-center"><div className="w-10 h-10 bg-stone-100 text-stone-500 rounded-full flex items-center justify-center font-serif text-lg">{rev.customerName.charAt(0)}</div><div><p className="font-bold text-sm text-stone-900">{rev.customerName}</p><div className="flex mt-1">{renderStars(rev.rating)}</div></div></div><span className="text-[9px] font-bold uppercase tracking-widest text-stone-400">{new Date(rev.date).toLocaleDateString()}</span></div><p className="text-sm text-stone-600 leading-relaxed italic">"{rev.comment}"</p></div></motion.div>)))}</div></div>
+        </div>
+      </div>
+
+      {/* RESTORED: CROSS-SELLING ENGINE */}
+      {relatedProducts && relatedProducts.length > 0 && (
+        <div className="bg-stone-100 py-20 border-t border-stone-200">
+          <div className="max-w-7xl mx-auto px-8">
+            <h3 className="text-2xl font-serif text-stone-900 mb-10 text-center">You May Also Like</h3>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+              {relatedProducts.map(rel => {
+                const relImage = (rel.mediaGallery && rel.mediaGallery.length > 0) ? rel.mediaGallery[0] : rel.imageUrl;
+                return (
+                <Link href={`/product/${rel._id}`} key={rel._id} className="group block">
+                  <div className="relative h-72 md:h-96 w-full mb-4 bg-stone-200 overflow-hidden rounded-xl shadow-sm">
+                    {isVideo(relImage) ? ( <video src={relImage} autoPlay loop muted playsInline className="h-full w-full object-cover transition duration-1000 group-hover:scale-105" /> ) : ( <img src={relImage} className="h-full w-full object-cover transition duration-1000 group-hover:scale-105" /> )}
+                  </div>
+                  <h4 className="text-sm font-serif text-stone-900 mb-1 group-hover:text-amber-800 transition">{rel.name}</h4>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[11px] font-bold text-stone-900">₹{(rel.price || 0).toLocaleString('en-IN')}</p>
+                    {rel.compareAtPrice && <p className="text-[9px] font-bold text-stone-400 line-through">₹{rel.compareAtPrice.toLocaleString('en-IN')}</p>}
+                  </div>
+                </Link>
+              )})}
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}

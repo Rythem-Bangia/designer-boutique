@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html { scroll-behavior: smooth; }
+body { @apply bg-stone-50 text-stone-900 antialiased selection:bg-amber-700 selection:text-white; }
+
+/* Elegant Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #fafaf9; }
+::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
+
+/* Custom utility for glassmorphism */
+.glass-panel { @apply bg-white/70 backdrop-blur-xl border border-white/40 shadow-sm; }
