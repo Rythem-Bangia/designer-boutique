@@ -16,8 +16,5 @@ frontend/out/
 .DS_Store
 *.log
 
-# Scratch / generated history file
-update.js
-
 # Local uploads (optional — uncomment if you don't want images in repo)
 # backend/uploads/
