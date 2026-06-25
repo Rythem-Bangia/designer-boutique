@@ -5,34 +5,17 @@ import { useCart } from '../../CartContext';
 import { useCustomer } from '../../CustomerContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { Ruler, ShoppingBag, ArrowLeft, Star, Heart, CheckCircle2, ChevronLeft, ChevronRight , Scissors} from 'lucide-react';
+import { Ruler, ShoppingBag, ArrowLeft, Star, Heart, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 
 
 const isVideo = (url) => { if (typeof url !== 'string') return false; return url.match(/\.(mp4|webm|mov|avi|mkv)(\?.*)?$/i) !== null; };
 
-export default function ProductPage({ 
-  params }) {
-  const [measurements, setMeasurements] = useState({ bust: '', chest: '', waist: '', hips: '', length: '' });
-
+export default function ProductPage({ params }) {
   const [product, setProduct] = useState(null);
-
-  // BESPOKE ENGINE LOGIC
-  
-  
-  const handleBespokeAddToCart = (originalCartFunc, prodPayload) => {
-    if (prodPayload?.requiresTailoring && (!measurements.bust || !measurements.waist || !measurements.hips)) {
-      alert("Please provide all measurements for bespoke tailoring.");
-      return;
-    }
-    const finalPayload = { ...prodPayload, measurements: prodPayload?.requiresTailoring ? measurements : null };
-    originalCartFunc(finalPayload);
-    alert("Added to Cart with Custom Measurements!");
-  };
-
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [selectedSize, setSelectedSize] = useState('');
-  
+  const [measurements, setMeasurements] = useState({ chest: '', waist: '', length: '' });
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
 

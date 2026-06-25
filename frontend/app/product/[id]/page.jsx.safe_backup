@@ -5,34 +5,15 @@ import { useCart } from '../../CartContext';
 import { useCustomer } from '../../CustomerContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { Ruler, ShoppingBag, ArrowLeft, Star, Heart, CheckCircle2, ChevronLeft, ChevronRight , Scissors} from 'lucide-react';
+import { Ruler, ShoppingBag, ArrowLeft, Star, Heart, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 
+const isVideo = (url) => url && (url.toLowerCase().includes('.mp4') || url.toLowerCase().includes('.webm') || url.toLowerCase().includes('.mov') || url.toLowerCase().includes('.avi') || url.toLowerCase().includes('.mkv'));
 
-
-const isVideo = (url) => { if (typeof url !== 'string') return false; return url.match(/\.(mp4|webm|mov|avi|mkv)(\?.*)?$/i) !== null; };
-
-export default function ProductPage({ 
-  params }) {
-  const [measurements, setMeasurements] = useState({ bust: '', chest: '', waist: '', hips: '', length: '' });
-
+export default function ProductPage({ params }) {
   const [product, setProduct] = useState(null);
-
-  // BESPOKE ENGINE LOGIC
-  
-  
-  const handleBespokeAddToCart = (originalCartFunc, prodPayload) => {
-    if (prodPayload?.requiresTailoring && (!measurements.bust || !measurements.waist || !measurements.hips)) {
-      alert("Please provide all measurements for bespoke tailoring.");
-      return;
-    }
-    const finalPayload = { ...prodPayload, measurements: prodPayload?.requiresTailoring ? measurements : null };
-    originalCartFunc(finalPayload);
-    alert("Added to Cart with Custom Measurements!");
-  };
-
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [selectedSize, setSelectedSize] = useState('');
-  
+  const [measurements, setMeasurements] = useState({ chest: '', waist: '', length: '' });
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
 
@@ -76,14 +57,14 @@ export default function ProductPage({
         <div className="space-y-4 sticky top-24">
           <div className="relative h-[65vh] lg:h-[75vh] w-full bg-stone-200 shadow-xl rounded-2xl overflow-hidden group">
             <AnimatePresence mode="wait">
-            <motion.div key={activeMediaIndex} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }} className="w-full h-full">
-              {gallery[activeMediaIndex]?.match(/\.(mp4|webm|mov|avi|mkv)(\?.*)?$/i) ? (
-                <video src={gallery[activeMediaIndex]} autoPlay loop muted playsInline className="w-full h-full object-cover" />
-              ) : (
-                <img src={gallery[activeMediaIndex]} className="w-full h-full object-cover" />
-              )}
-            </motion.div>
-          </AnimatePresence>
+              <motion.div key={activeMediaIndex} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }} className="w-full h-full">
+                {isVideo(gallery[activeMediaIndex]) ? ( <video src={gallery[activeMediaIndex]} className="w-full h-full object-cover" autoPlay loop muted playsInline /> ) : ( {isVideo(gallery[activeMediaIndex]) ? (
+                    <video src={gallery[activeMediaIndex]} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                  ) : (
+                    <img src={gallery[activeMediaIndex]} className="w-full h-full object-cover" />
+                  )} )}
+              </motion.div>
+            </AnimatePresence>
             {gallery.length > 1 && ( <>
               <button onClick={() => setActiveMediaIndex(prev => (prev - 1 + gallery.length) % gallery.length)} className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 p-2 rounded-full opacity-0 group-hover:opacity-100 transition shadow"><ChevronLeft size={20}/></button>
               <button onClick={() => setActiveMediaIndex(prev => (prev + 1) % gallery.length)} className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 p-2 rounded-full opacity-0 group-hover:opacity-100 transition shadow"><ChevronRight size={20}/></button>

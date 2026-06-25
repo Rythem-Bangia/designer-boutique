@@ -72,7 +72,7 @@ export function CartProvider({ children }) {
   };
 
   // BUG FIX: Prevent negative cart totals 
-  const cartTotal = Math.max(0, cartSubtotal - discountAmount) + shippingFee;
+  const cartTotal = Math.max(0, (Number(cartSubtotal) || 0) - (Number(discountAmount) || 0)) + (Number(shippingFee) || 0);
 
   return (
     <CartContext.Provider value={{ cart, isCartOpen, setIsCartOpen, addToCart, removeFromCart, clearCart, cartSubtotal, discountAmount, promoCode, cartTotal, shippingFee, setShippingFee, availablePromos, applyPromoCode }}>
